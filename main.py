@@ -1,6 +1,10 @@
+from time import sleep
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
+import urllib.request
 
+import vk_captchasolver as vc
+import re
 import vk_api
 import vk_api
 from vk_api.audio import VkAudio
@@ -8,23 +12,30 @@ from vk_api.audio import VkAudio
 #Your VK login and password
 
 vkcreds = {
-    "login":"+79999999999",
-    "password":"yoursecretpassword"
+    "login":"79999999999",
+    "password":"password"
 }
 
 #Your spotify api client_id and client_secret
 
 spotifycreds = {
-    "client_id":"spotifyclientid",
-    "client_secret":"spotifyclientsecret"
+    "client_id":"id",
+    "client_secret":"secret"
 }
 
 #False to add from last added to first added tracks
 
-reverse = True
+reverse = False
 
 #Id to your playlist
-playlist_id = ""
+print('Insert Spotify playlist ID')
+match_spotify = re.search('([A-Z0-9])\w+', input())
+playlist_id = match_spotify.group()
+
+print('Insert VK playlist ID')
+match_vk = re.search('_([0-9])\w+_', input())
+playlist_id_vk = match_vk.group()
+playlist_id_vk = int(playlist_id_vk.replace('_', ''))
 
 creds = SpotifyClientCredentials(client_id = spotifycreds["client_id"], client_secret=spotifycreds["client_secret"])
 spotify = spotipy.Spotify(client_credentials_manager=creds)
@@ -48,7 +59,11 @@ def addtoPlaylist(list, data):
     list.append(f'{artists} - {name}')
 
 def captcha_handler(captcha):
-    key = input("Enter captcha code {0}: ".format(captcha.get_url())).strip()
+    print('Tring to solve captcha...')
+    imgURL = captcha.get_url()
+    urllib.request.urlretrieve(imgURL, "captcha.png")
+    key = vc.solve(image='captcha.png')
+#   key = input("Enter captcha code {0}: ".format(captcha.get_url())).strip()
     return captcha.try_again(key)
 
 def auth_handler():
@@ -79,7 +94,7 @@ print("adding to vk")
 def addAudio(query):
     tracks = vkaudio.search(q=f"{query}", count=1)
     for n, track in enumerate(tracks, 1):
-        vk.audio.add(audio_id = track['id'], owner_id=track['owner_id'])
+        vk.audio.add(audio_id = track['id'], owner_id=track['owner_id'], playlist_id = playlist_id_vk)
         print(f'added {query}')
 
 if reverse == True:
