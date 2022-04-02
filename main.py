@@ -1,7 +1,13 @@
+from itertools import count
 from time import sleep
+from tracemalloc import stop
+from turtle import title
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import urllib.request
+import sys
+import ast
+from vkaudiotoken import get_vk_official_token
 
 import vk_captchasolver as vc
 import re
@@ -15,6 +21,11 @@ vkcreds = {
     "login":"79999999999",
     "password":"password"
 }
+
+#Getting VK Audio Token
+
+vkaudiotoken = get_vk_official_token(vkcreds["login"], vkcreds["password"])
+vkaudiotoken = vkaudiotoken["token"]
 
 #Your spotify api client_id and client_secret
 
@@ -32,15 +43,14 @@ print('Insert Spotify playlist link')
 match_spotify = re.search('([A-Z0-9])\w+', input())
 playlist_id = match_spotify.group()
 
-print('Insert VK playlist link')
-match_vk = re.search('_([0-9])\w+_', input())
-playlist_id_vk = match_vk.group()
-playlist_id_vk = int(playlist_id_vk.replace('_', ''))
-
 creds = SpotifyClientCredentials(client_id = spotifycreds["client_id"], client_secret=spotifycreds["client_secret"])
 spotify = spotipy.Spotify(client_credentials_manager=creds)
 
-data = spotify.playlist_tracks(playlist_id=f'{playlist_id}',limit=1, offset=0)
+results = spotify.user_playlist(user=None, playlist_id=f'{playlist_id}', fields="name")
+data = spotify.playlist_tracks(playlist_id=f'{playlist_id}', limit=1, offset=0)
+
+def getPlaylistName(results):
+    return results['name']
 
 def getArtists(data):
     artists = []
@@ -59,7 +69,7 @@ def addtoPlaylist(list, data):
     list.append(f'{artists} - {name}')
 
 def captcha_handler(captcha):
-    print('Tring to solve captcha...')
+    print('Trying to solve captcha...')
     imgURL = captcha.get_url()
     urllib.request.urlretrieve(imgURL, "captcha.png")
     key = vc.solve(image='captcha.png')
@@ -71,6 +81,8 @@ def auth_handler():
     remember_device = True
     return key, remember_device
 
+playlistName = getPlaylistName(results)
+
 playlist = []
 
 for i in range(data['total']):
@@ -79,19 +91,37 @@ for i in range(data['total']):
     data = spotify.playlist_tracks(playlist_id=f'{playlist_id}',limit=1, offset=i)
     playlist.append(f"{artists} - {name}")
 
-vk_session = vk_api.VkApi(vkcreds["login"], vkcreds["password"], auth_handler=auth_handler,captcha_handler=captcha_handler)
+#vk_session = vk_api.VkApi(vkcreds["login"], vkcreds["password"], vkaudiotoken, auth_handler=auth_handler,captcha_handler=captcha_handler)
+vk_session = vk_api.VkApi(token=vkaudiotoken, captcha_handler=captcha_handler)
+vk_session_audio = vk_api.VkApi(vkcreds["login"], vkcreds["password"], auth_handler=auth_handler)
 
 try:
-    vk_session.auth()
+    vk_session_audio.auth(token_only = True)
 except vk_api.AuthError as error_msg:
     print(error_msg)
     exit()
 
-vkaudio = VkAudio(vk_session)
+vkaudio = VkAudio(vk_session_audio)
 vk = vk_session.get_api()
 print("adding to vk")
 
+def getUserId():
+    user_data = vk.users.get()
+    user_data = str(user_data[0])
+    user_data = dict(ast.literal_eval(user_data))
+    user_id = int(user_data['id'])
+    return user_id
+
+def createVkPlaylist(playlistName):
+    user_id = getUserId()
+    vk.audio.createPlaylist(owner_id = user_id, title = playlistName)
+    playlists = vk.audio.getPlaylists(owner_id = user_id, count = 1)
+    playlists = playlists["items"]
+    playlists = dict(playlists[0])
+    return int(playlists["id"])
+
 def addAudio(query):
+    playlist_id_vk = createVkPlaylist(playlistName)
     tracks = vkaudio.search(q=f"{query}", count=1)
     for n, track in enumerate(tracks, 1):
         vk.audio.add(audio_id = track['id'], owner_id=track['owner_id'], playlist_id = playlist_id_vk)
@@ -99,6 +129,7 @@ def addAudio(query):
 
 if reverse == True:
     playlist.reverse()
+
 
 for name in playlist:
     addAudio(name)  
