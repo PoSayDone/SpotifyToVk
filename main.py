@@ -28,11 +28,11 @@ spotifycreds = {
 reverse = False
 
 #Id to your playlist
-print('Insert Spotify playlist ID')
+print('Insert Spotify playlist link')
 match_spotify = re.search('([A-Z0-9])\w+', input())
 playlist_id = match_spotify.group()
 
-print('Insert VK playlist ID')
+print('Insert VK playlist link')
 match_vk = re.search('_([0-9])\w+_', input())
 playlist_id_vk = match_vk.group()
 playlist_id_vk = int(playlist_id_vk.replace('_', ''))
