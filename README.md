@@ -9,3 +9,5 @@
 ```
 pip install -r requirements.txt
 ```
+## Настройка
+Для работы скрипта вы должны указать данные от своего аккаунта ВКонтакте, Client ID и Client Secret (которые можно получить [тут](https://developer.spotify.com/dashboard)) в account_data.json.
