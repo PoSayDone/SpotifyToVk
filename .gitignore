@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+vk_audio_token.txt
+vk_config.v2.json
